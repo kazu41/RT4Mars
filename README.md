@@ -1,10 +1,6 @@
 # RT4Mars
 
-<<<<<<< HEAD
-![Badge Status](https://ci-as-a-service)
-
 =======
->>>>>>> 6c43430ffdcfc86fe3b997c71bffdff954633d69
 Radiative transfer codes for the Martian atmosphere and a sub-mm frequency region
 
 ## Description
@@ -48,15 +44,9 @@ Radiative transfer codes for the Martian atmosphere and a sub-mm frequency regio
     ```
 
 5. To see the settings
-<<<<<<< HEAD
-```console
-IPython$ print(rt)
-```
-=======
     ```console
     IPython$ print(rt)
     ```
->>>>>>> 6c43430ffdcfc86fe3b997c71bffdff954633d69
 
 ## Installation
 
