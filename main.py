@@ -34,8 +34,8 @@ files_jpl = {'O2':'JPL/c032001.cat',
             'HDO':'JPL/c019002.cat',
             'CO':'JPL/c028001.cat',
             'C-13-O':'JPL/c029001.cat',
-            'CO-17':'c029006.cat',
-            'CO-18':'c030001.cat'
+            'CO-17':'JPL/c029006.cat',
+            'CO-18':'JPL/c030001.cat'
             }
 file_atm = 'ATM/mars_atm_renyu_iso.npz'
 
