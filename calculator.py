@@ -72,16 +72,14 @@ def atm2pa(var,return_inv=False):
 
 def planck(freq,T):
     '''
-    planck function [Jm-2 --> Wsm-2]
+    planck function [Jm-2 --> W/m2/str]
     '''
     bnu = 2*h*freq**3/c**2/(np.exp(h*freq/kB/T)-1)
     return bnu
 
-def brightness_temperature(freq,T,alpha=1):
+def I2Tb(freq,I):
     '''
-    Brightness Temperature [K]
+    convert radiance [W/m2/str] to Brightness Temperature [K]
     '''
-    #tb = planck(freq,T)*c**2 / (2*kB * freq**2)
-    emis = alpha # LTE
-    tb = h*freq/kB / np.log(1 + (np.exp(h*freq/(kB*T)) - 1)/emis)
+    tb = h*freq/kB / np.log(1+(2*h*freq**3)/(I*c**2))
     return tb
