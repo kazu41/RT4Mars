@@ -230,8 +230,8 @@ class RT:
             if z0 > 0: # Limb
                 geometry = 'Limb'
                 t0 = self.T_bg
-                cond_alt = (z < self.z_inst)&np.isnan(s_tmp)==0
-                cond_alt_far = np.isnan(s_tmp)==0
+                cond_alt = (z < self.z_inst)&(np.isnan(s_tmp)==0)
+                cond_alt_far = (np.isnan(s_tmp)==0)
                 absc = np.r_[absc[cond_alt][::-1],absc[cond_alt_far][1:]]
                 temp_phis = np.r_[temp_phis[cond_alt][::-1],temp_phis[cond_alt_far][1:]]
                 s_tmp = np.r_[s_tmp[cond_alt][::-1],s_tmp[cond_alt_far][1:]]
@@ -239,20 +239,20 @@ class RT:
             else: # down-looking
                 geometry = self.geometry
                 t0 = self.T_surf
-                cond_alt = (z < self.z_inst)&np.isnan(s_tmp)==0
+                cond_alt = (z < self.z_inst)&(np.isnan(s_tmp)==0)
                 absc = absc[cond_alt][::-1]
                 temp_phis = temp_phis[cond_alt][::-1]
                 s_tmp = s_tmp[cond_alt][::-1]
-                ds_tmp = np.abs(np.gradient(s_tmp))[cond_alt][:,np.newaxis]
+                ds_tmp = np.abs(np.gradient(s_tmp))[:,np.newaxis]
         elif self.geometry=='up-looking':
             geometry = self.geometry
             # back ground temperature
             t0 = self.T_bg # space
-            cond_alt = (z > self.z_inst)&np.isnan(s_tmp)==0
+            cond_alt = (z > self.z_inst)&(np.isnan(s_tmp)==0)
             absc = absc[cond_alt]
             temp_phis = temp_phis[cond_alt]
             s_tmp = s_tmp[cond_alt]
-            ds_tmp = np.abs(np.gradient(s_tmp))[cond_alt][:,np.newaxis]
+            ds_tmp = np.abs(np.gradient(s_tmp))[:,np.newaxis]
         else: raise ValueError
         print('%s setting, tangent height : %.1f km'%(geometry,z0))
         ds_0 = np.abs(s_inst-s_tmp[0]) # distance from the instrument to the 1st layer
