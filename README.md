@@ -54,6 +54,6 @@ Radiative transfer codes for the Martian atmosphere and a sub-mm frequency regio
 
 ## Author
 
-[Kazutoshi Sagi](kazutoshi.sagi@gmail.com "gmail")
+Kazutoshi Sagi -- kazutoshi.sagi@gmail.com
 
 ## License
