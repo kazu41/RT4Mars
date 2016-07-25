@@ -25,6 +25,10 @@ from IPython.core.debugger import Pdb
 pdb = Pdb()
 
 # settings
+# multiprocessing
+# number of processors
+n_proc = 4
+
 # JPL molecules files
 molelist = {'O2':1,'O-18-O':2,'H2O':1,'H2O-18':2,'H2O-17':3,'HDO':4,'CO':1,'C-13-O':2,'CO-18':3,'CO-17':4}
 files_jpl = {'O2':'JPL/c032001.cat',
@@ -90,8 +94,8 @@ class RT:
         self.T_bg = 2.725 # Back ground Temperature [K]
 
         # frequency range
-        self.fre_min = 420.e9 # [Hz]
-        self.fre_max = 450.e9 # [Hz]
+        self.fre_min = 300.e9 # [Hz]
+        self.fre_max = 500.e9 # [Hz]
         self.fre_delta = 1e6 # channel resolution (1MHz) [Hz]
         self.fre_cutoff = 10e9 # cut off frequency (10GHz) [Hz]
         self.freq = np.arange(self.fre_min,self.fre_max+self.fre_delta,self.fre_delta)
@@ -182,7 +186,7 @@ class RT:
 
         cond_freq = (self.freq >= freq0-self.fre_cutoff) & (self.freq <= freq0+self.fre_cutoff)
         freq_tmp = self.freq[cond_freq]
-        abscoef = np.zeros([self.n_levels,freq_tmp.size])
+        abscoef = np.zeros([self.n_levels,self.n_channel])
         for i in xrange(self.n_levels):
             # sys.stdout.write("\r%i line : %i / %i levels"%(id_line+1,i+1,self.n_levels))
             # sys.stdout.flush()
@@ -205,9 +209,21 @@ class RT:
             else: raise ValueError
             # line intensity
             stg_t = JPL.get_Stg(freq0,stg300,elo,temp4qs,qs,temp[i]) # Hzm2/molec
-            abscoef[i] = stg_t*f_ls*mole_vmr[i]*nd[i]
+            abscoef[i][cond_freq] = stg_t*f_ls*mole_vmr[i]*nd[i]
         # print('')
-        return cond_freq,abscoef
+        return abscoef
+
+    def subcalc(self,queue,p):
+        '''
+        multiprocessing sub routine
+        '''
+        nline = self.spectro['spectro']['nline']
+        ini = nline * p/n_proc
+        fin = nline * (p+1)/n_proc
+        out = np.zeros([self.n_levels,self.n_channel])
+        for i in xrange(ini,fin):
+            out += self._abscoef(i)
+        queue.put(out)
 
     def get_abscoef(self):
         '''
@@ -216,14 +232,22 @@ class RT:
         print('#'*30)
         print('Absorption coefficient calculation')
         t0 = time.time()
-        #p = mp.Pool()
-        nline = self.spectro['spectro']['nline']
-        #result = p.map(MulHelper(self,'_abscoef'),xrange(nline))
         self.abscoef = np.zeros([self.n_levels,self.n_channel])
-        for l in xrange(nline):
-            cond_freq,absc = self._abscoef(l)
-            #cond_freq,absc = result[l]
-            self.abscoef[:,cond_freq] += absc
+        # set queue
+        queue = mp.Queue()
+        # set processes
+        ps = [mp.Process(target=self.subcalc, args=(queue, i)) for i in xrange(n_proc)]
+        # start Process
+        for p in ps:
+            p.start()
+        # store result
+        for i in xrange(n_proc):
+            self.abscoef += queue.get()
+        # close queue
+        queue.close()
+        # terminate processes
+        for p in ps:
+            p.terminate()
         # Abs. finish
         print('%f sec'%(time.time()-t0))
         print('#'*30)
