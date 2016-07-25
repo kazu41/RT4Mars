@@ -90,8 +90,8 @@ class RT:
         self.T_bg = 2.725 # Back ground Temperature [K]
 
         # frequency range
-        self.fre_min = 300.e9 # [Hz]
-        self.fre_max = 500.e9 # [Hz]
+        self.fre_min = 420.e9 # [Hz]
+        self.fre_max = 450.e9 # [Hz]
         self.fre_delta = 1e6 # channel resolution (1MHz) [Hz]
         self.fre_cutoff = 10e9 # cut off frequency (10GHz) [Hz]
         self.freq = np.arange(self.fre_min,self.fre_max+self.fre_delta,self.fre_delta)
@@ -187,21 +187,21 @@ class RT:
             # sys.stdout.write("\r%i line : %i / %i levels"%(id_line+1,i+1,self.n_levels))
             # sys.stdout.flush()
             # pressure shift
-            freq0 = sp.pressure_shift(freq0,d_air,n_air,pres[i],temp[i])
+            freq0_shifted = sp.pressure_shift(freq0,d_air,n_air,pres[i],temp[i])
             # Line shape
             if self.lineshape=='d': # doppler
-                f_ls = sp.doppler(molar_mass,freq0,freq_tmp,temp[i])
+                f_ls = sp.doppler(molar_mass,freq0_shifted,freq_tmp,temp[i])
             elif self.lineshape=='l': # lorentz
-                f_ls = sp.lorentz(freq0,freq_tmp,gair,gself,mole_vmr[i],temp[i],pres[i],n_air=n_air,n_self=n_self)
+                f_ls = sp.lorentz(freq0_shifted,freq_tmp,gair,gself,mole_vmr[i],temp[i],pres[i],n_air=n_air,n_self=n_self)
             elif self.lineshape=='v':
                 # lorentzian line width
                 gamma_l = sp.gamma_lorentzian(gair,gself,mole_vmr[i],temp[i],pres[i],n_air=n_air,n_self=n_self)
                 # adding natural broadening
                 gamma_l += gntr
                 # doppler line width
-                gamma_d = sp.doppler_width(molar_mass,freq0,temp[i],return_fwhm=False)
+                gamma_d = sp.doppler_width(molar_mass,freq0_shifted,temp[i],return_fwhm=False)
                 # voigt lineshape
-                f_ls = sp.voigt(freq_tmp,freq0,gamma_d,gamma_l)
+                f_ls = sp.voigt(freq_tmp,freq0_shifted,gamma_d,gamma_l)
             else: raise ValueError
             # line intensity
             stg_t = JPL.get_Stg(freq0,stg300,elo,temp4qs,qs,temp[i]) # Hzm2/molec
@@ -209,7 +209,7 @@ class RT:
         # print('')
         return cond_freq,abscoef
 
-    def get_abscoef_tmp(self):
+    def get_abscoef(self):
         '''
         main script to calculate radiative transfer
         '''
@@ -225,65 +225,6 @@ class RT:
             #cond_freq,absc = result[l]
             self.abscoef[:,cond_freq] += absc
         # Abs. finish
-        print('%f sec'%(time.time()-t0))
-        print('#'*30)
-
-    def get_abscoef(self):
-        '''
-        main script to calculate radiative transfer
-        '''
-        t0 = time.time()
-        temp = self.atm['t'] # K
-        pres = self.atm['p'] # hPa
-        nd = self.atm['nd'] # molec/m3
-        nline = self.spectro['spectro']['nline']
-
-        print('#'*30)
-        print('Absorption coefficient calculation')
-        self.abscoef = np.zeros([self.n_levels,self.n_channel])
-        for i in xrange(self.n_levels):
-            # line by line
-            for l in xrange(nline):
-                sys.stdout.write("\r%i / %i levels : %i / %i lines"%(i+1,self.n_levels,l+1,nline))
-                sys.stdout.flush()
-                mole_name = self.spectro['line']['name'][l]
-                freq0 = self.spectro['line']['freq'][l]
-                n_air = self.spectro['line']['n_air'][l]
-                n_self = self.spectro['line']['n_self'][l]
-                d_air = self.spectro['line']['delta_air'][l]
-                #d_self = self.spectro['line']['delta_self'][l]
-                gair = self.spectro['line']['gamma_air'][l]
-                gself = self.spectro['line']['gamma_self'][l]
-                gntr = self.spectro['line']['gamma_natural'][l]
-                stg300 = self.spectro['line']['stg300'][l]
-                elo = self.spectro['line']['elo'][l]
-                qs = self.spectro['spectro']['qs'][mole_name][0]
-                temp4qs = self.spectro['spectro']['qs'][mole_name][1]
-                mole_vmr = self.atm[mole_name][i]
-                molar_mass = self.spectro['spectro']['molar_mass'][mole_name]
-                cond_freq = (self.freq >= freq0-self.fre_cutoff)&(self.freq <= freq0+self.fre_cutoff)
-                freq_tmp = self.freq[cond_freq]
-                # pressure shift
-                freq0 = sp.pressure_shift(freq0,d_air,n_air,pres[i],temp[i])
-                # Line shape
-                if self.lineshape=='d': # doppler
-                    f_ls = sp.doppler(molar_mass,freq0,freq_tmp,temp[i])
-                elif self.lineshape=='l': # lorentz
-                    f_ls = sp.lorentz(freq0,freq_tmp,gair,gself,mole_vmr,temp[i],pres[i],n_air=n_air,n_self=n_self)
-                elif self.lineshape=='v':
-                    # lorentzian line width
-                    gamma_l = sp.gamma_lorentzian(gair,gself,mole_vmr,temp[i],pres[i],n_air=n_air,n_self=n_self)
-                    # adding natural broadening
-                    gamma_l += gntr
-                    # doppler line width
-                    gamma_d = sp.doppler_width(molar_mass,freq0,temp[i],return_fwhm=False)
-                    # voigt lineshape
-                    f_ls = sp.voigt(freq_tmp,freq0,gamma_d,gamma_l)
-                else: raise IOError
-                # line intensity
-                stg_t = JPL.get_Stg(freq0,stg300,elo,temp4qs,qs,temp[i]) # Hzm2/molec
-                self.abscoef[i,cond_freq] += stg_t*f_ls*mole_vmr*nd[i]
-        print('') # Abs. finish
         print('%f sec'%(time.time()-t0))
         print('#'*30)
 
