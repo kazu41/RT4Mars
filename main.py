@@ -24,26 +24,6 @@ import multiprocessing as mp
 from IPython.core.debugger import Pdb
 pdb = Pdb()
 
-# settings
-# multiprocessing
-# number of processors
-n_proc = 4
-
-# JPL molecules files
-molelist = {'O2':1,'O-18-O':2,'H2O':1,'H2O-18':2,'H2O-17':3,'HDO':4,'CO':1,'C-13-O':2,'CO-18':3,'CO-17':4}
-files_jpl = {'O2':'JPL/c032001.cat',
-            'O-18-O':'JPL/c034001.cat',
-            'H2O':'JPL/c018003.cat',
-            'H2O-18':'JPL/c020003.cat',
-            'H2O-17':'JPL/c019003.cat',
-            'HDO':'JPL/c019002.cat',
-            'CO':'JPL/c028001.cat',
-            'C-13-O':'JPL/c029001.cat',
-            'CO-17':'JPL/c029006.cat',
-            'CO-18':'JPL/c030001.cat'
-            }
-file_atm = 'ATM/mars_atm_renyu_iso.npz'
-
 class CTL:
     def __init__(self,ctlfile):
         self.ctlfile = ctlfile
