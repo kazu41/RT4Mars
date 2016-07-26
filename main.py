@@ -75,6 +75,7 @@ class CTL:
         '''
         self.freq = np.arange(self.fre_min,self.fre_max+self.fre_delta,self.fre_delta)
         self.n_channel = self.freq.size
+        self.spectro = self.merge_jplcat(self.molelist)
 
     def load_atm(self,file_atm,n=100):
         '''
@@ -158,6 +159,26 @@ class RT(CTL):
         strings += "l,d and v for lorentz, doppler and voigt\n"
         strings += '#'*40 + '\n'
         return strings
+
+    def __call__(self,*args):
+        '''
+        execute Absorption coeff. and Radiative transfer calculations
+        '''
+        # reset freqs
+        flag_freq = args[0]
+        if flag_freq==1:
+            self.set_freqs()
+        # print current settings
+        print(self)
+        # Absorption coefficient
+        flag_abs = args[1]
+        if flag_abs==1:
+            self.get_abscoef()
+        # Radiative transfer
+        flag_rt = args[2]
+        if flag_rt==1:
+            Tb = self.radiative_transfer()
+            return Tb
 
     # main script
     def _abscoef(self,id_line):
