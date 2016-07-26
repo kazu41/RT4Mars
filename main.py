@@ -44,67 +44,58 @@ files_jpl = {'O2':'JPL/c032001.cat',
             }
 file_atm = 'ATM/mars_atm_renyu_iso.npz'
 
-class RT:
-    def __init__(self,molelist):
-        self.molelist = molelist.keys()
-        self.isos = molelist.values()
-        self.set_conditions()
+class CTL:
+    def __init__(self,ctlfile):
+        self.ctlfile = ctlfile
+        self.loadctl()
 
-    def __repr__(self):
-        def get_freqstr(nu):
-            freq = np.log10(nu)
-            freq_pow = np.floor(freq)
-            freq_base = 10**(freq - freq_pow)
-            str = '%.2f * 10^%i'%(freq_base,freq_pow)
-            return str
-
-        strings = '#'*40 + '\n'
-        strings += 'Radiative transfer calculation\n'
-        strings += '#'*40 + '\n'
-        strings += 'Geometry: %s\n'%self.geometry
-        strings += 'Instrumental altitude: %.1fkm with angle = %.1f\n'%(self.z_inst,self.angle)
-        strings += '(* No refraction approximation)\n'
-        strings += '#'*40 + '\n'
-        strings += 'Absorption by %s\n'%self.molelist
-        strings += "%s lines : %s -- %s Hz\n"%(self.spectro['spectro']['nline'],get_freqstr(self.fre_min),get_freqstr(self.fre_max))
-        strings += 'Line shape function : %s\n'%self.lineshape
-        strings += "l for lorentz, d for doppler, v for voigt\n"
-        strings += '#'*40 + '\n'
-        return strings
-
-    def set_conditions(self):
+    def loadctl(self):
+        '''
+        settings loaded from the control file
+        '''
+        execfile(self.ctlfile)
+        ctldata = locals()
         # settings
+        self.files_jpl = ctldata['files_jpl']
+        self.molelist = ctldata['molelist'].keys()
+        self.isos = ctldata['molelist'].values()
         # load atmospheric profiles
-        #atm = np.load('ATM/mars_atm.npz')
-        self.atm = self.load_atm()
+        self.atm = self.load_atm(ctldata['file_atm'],ctldata['divider_layers'])
         self.n_levels = self.atm['z'].size
 
         # observational geometry
-        self.z_inst = 0. # instrumental altitude [km]
-        if self.z_inst > 0.:
-            self.geometry = 'down-looking'
-        elif self.z_inst == 0.:
-            self.geometry = 'up-looking'
-        else: raise IOError
-        self.angle = 90. # observational angle [deg]
-                         # SZA for 'down-looking'
-                         # Eelvation angle for 'up-looking'
-        self.R_p = 3390.0 # Planet radius [km] [Mars]
-        self.T_surf = 240 # surface Temperature [K]
-        self.T_bg = 2.725 # Back ground Temperature [K]
+        self.geometry = ctldata['geometry']
+        # instrumental altitude [km]
+        self.z_inst = ctldata['z_inst']
+        # observational angle [deg]
+        self.angle = ctldata['obsangle']
+        # Planet radius [km] [Mars]
+        self.R_p = ctldata['R_p']
+        # surface Temperature [K]
+        self.T_surf = ctldata['T_surf']
+        # Back ground Temperature [K]
+        self.T_bg = ctldata['T_bg']
+        # Tangent altitude [km]
+        self.z0 = ctldata['z0']
 
         # frequency range
-        self.fre_min = 300.e9 # [Hz]
-        self.fre_max = 500.e9 # [Hz]
-        self.fre_delta = 1e6 # channel resolution (1MHz) [Hz]
-        self.fre_cutoff = 10e9 # cut off frequency (10GHz) [Hz]
-        self.freq = np.arange(self.fre_min,self.fre_max+self.fre_delta,self.fre_delta)
-        self.n_channel = self.freq.size
-        self.lineshape = 'v' # l for lorentz, d for doppler, v for voigt
+        self.lineshape = ctldata['lineshape'] # l for lorentz, d for doppler, v for voigt
+        self.fre_min = ctldata['fre_min'] # [Hz]
+        self.fre_max = ctldata['fre_max'] # [Hz]
+        self.fre_delta = ctldata['fre_delta'] # channel resolution (1MHz) [Hz]
+        self.fre_cutoff = ctldata['fre_cutoff'] # cut off frequency (10GHz) [Hz]
+        self.set_freqs()
         self.spectro = self.merge_jplcat(self.molelist)
 
     # functions
-    def load_atm(self,n=100):
+    def set_freqs(self):
+        '''
+        set self.freq and self.n_channel
+        '''
+        self.freq = np.arange(self.fre_min,self.fre_max+self.fre_delta,self.fre_delta)
+        self.n_channel = self.freq.size
+
+    def load_atm(self,file_atm,n=100):
         '''
         load atmospheric data with interpolation by cumulative number density
 
@@ -125,7 +116,7 @@ class RT:
         return out
 
     def load_jplcat(self,mole,iso):
-        jpl = JPL.JPL(files_jpl[mole])
+        jpl = JPL.JPL(self.files_jpl[mole])
         jpl.limit_lines(self.fre_min,self.fre_max)
         hitran = JPL.HITRAN(jpl.name,iso)
         cond_hitran = hitran.coincise_freq(jpl.freq)
@@ -159,6 +150,33 @@ class RT:
                 for k in jpl_tmp['line'].keys():
                     jpl['line'][k] = jpl['line'][k][id_sort]
         return jpl
+
+class RT(CTL):
+    def __init__(self,*args,**opt):
+        self.ctlfile = args[0]
+        self.loadctl()
+
+    def __repr__(self):
+        def get_freqstr(nu):
+            freq = np.log10(nu)
+            freq_pow = np.floor(freq)
+            freq_base = 10**(freq - freq_pow)
+            str = '%.2f * 10^%i'%(freq_base,freq_pow)
+            return str
+
+        strings = '#'*40 + '\n'
+        strings += 'Radiative transfer calculation\n'
+        strings += '#'*40 + '\n'
+        strings += 'Geometry: %s\n'%self.geometry
+        strings += 'Instrumental altitude: %.1f km\nwith angle = %.1f deg\n'%(self.z_inst,self.angle)
+        strings += '(* No refraction approximation)\n'
+        strings += '#'*40 + '\n'
+        strings += 'Absorption by %s\n'%self.molelist
+        strings += "%s lines : %s -- %s Hz\n"%(self.spectro['spectro']['nline'],get_freqstr(self.fre_min),get_freqstr(self.fre_max))
+        strings += 'Line shape function : %s\n'%self.lineshape
+        strings += "l,d and v for lorentz, doppler and voigt\n"
+        strings += '#'*40 + '\n'
+        return strings
 
     # main script
     def _abscoef(self,id_line):
@@ -252,16 +270,10 @@ class RT:
         print('%f sec'%(time.time()-t0))
         print('#'*30)
 
-    def radiative_transfer(self):
+    def params4los(self,z0):
         '''
-        return Tb
+        return parameters on LOS for the given tangent altitude z0 [km]
         '''
-        # Geometrical change of the path
-        print('#'*30)
-        print('Radiative transfer')
-        print('-- Geometrical setting')
-        # tangent altitude
-        z0 = geo.deg2tanz(self.angle,self.R_p,self.z_inst,self.geometry)
         # LOS
         z = self.atm['z']
         s_tmp = geo.convert_los(z, z0, self.R_p)*1e3 # [km --> m]
@@ -295,10 +307,27 @@ class RT:
             temp_phis = temp_phis[cond_alt]
             s_tmp = s_tmp[cond_alt]
             ds_tmp = np.abs(np.gradient(s_tmp))[:,np.newaxis]
-        else: raise ValueError
+        else: raise ValueError('Given geometry setting is wrong.')
         print('%s setting, tangent height : %.1f km'%(geometry,z0))
         ds_0 = np.abs(s_inst-s_tmp[0]) # distance from the instrument to the 1st layer
         s = np.cumsum(ds_tmp)
+        return ds_0,s,t0,temp_phis,absc
+
+    def radiative_transfer(self):
+        '''
+        return Tb
+        '''
+        # Geometrical change of the path
+        print('#'*30)
+        print('Radiative transfer')
+        print('-- Geometrical setting')
+        # Tangent altitude [km]
+        if self.z0==None:
+            z0 = geo.deg2tanz(self.angle,self.R_p,self.z_inst,self.geometry)
+        else:
+            z0 = self.z0
+        # lOS
+        ds_0,s,t0,temp_phis,absc = self.params4los(z0)
         print('-- Calculation')
         # Radiative transfer
         # Brightness Temperature
@@ -306,17 +335,9 @@ class RT:
         tau = integrate.cumtrapz(absc,x=s,axis=0,initial=0)
         tau[0] = absc[0]*ds_0
         eta = np.exp(-tau)
-        Inu = np.r_[[c.planck(self.freq,temp_phis[i]) for i in xrange(s_tmp.size)]]
+        Inu = np.r_[[c.planck(self.freq,temp_phis[i]) for i in xrange(s.size)]]
         I0 = eta[-1]*c.planck(self.freq,t0)
         Ib = integrate.trapz(absc*eta*Inu,x=s,axis=0)
         Tb_out = c.I2Tb(self.freq,I0+Ib)
         print('#'*30)
         return Tb_out
-
-class MulHelper(object):
-    def __init__(self, cls, mtd_name):
-        self.cls = cls
-        self.mtd_name = mtd_name
-
-    def __call__(self, *args, **kwargs):
-        return getattr(self.cls, self.mtd_name)(*args, **kwargs)
