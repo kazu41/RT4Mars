@@ -36,6 +36,7 @@ class CTL:
         execfile(self.ctlfile)
         ctldata = locals()
         # settings
+        self.n_proc = ctldata['n_proc']
         self.files_jpl = ctldata['files_jpl']
         self.molelist = ctldata['molelist'].keys()
         self.isos = ctldata['molelist'].values()
@@ -186,8 +187,6 @@ class RT(CTL):
         freq_tmp = self.freq[cond_freq]
         abscoef = np.zeros([self.n_levels,self.n_channel])
         for i in xrange(self.n_levels):
-            # sys.stdout.write("\r%i line : %i / %i levels"%(id_line+1,i+1,self.n_levels))
-            # sys.stdout.flush()
             # pressure shift
             freq0_shifted = sp.pressure_shift(freq0,d_air,n_air,pres[i],temp[i])
             # Line shape
@@ -216,8 +215,8 @@ class RT(CTL):
         multiprocessing sub routine
         '''
         nline = self.spectro['spectro']['nline']
-        ini = nline * p/n_proc
-        fin = nline * (p+1)/n_proc
+        ini = nline * p/self.n_proc
+        fin = nline * (p+1)/self.n_proc
         out = np.zeros([self.n_levels,self.n_channel])
         for i in xrange(ini,fin):
             out += self._abscoef(i)
@@ -234,12 +233,12 @@ class RT(CTL):
         # set queue
         queue = mp.Queue()
         # set processes
-        ps = [mp.Process(target=self.subcalc, args=(queue, i)) for i in xrange(n_proc)]
+        ps = [mp.Process(target=self.subcalc, args=(queue, i)) for i in xrange(self.n_proc)]
         # start Process
         for p in ps:
             p.start()
         # store result
-        for i in xrange(n_proc):
+        for i in xrange(self.n_proc):
             self.abscoef += queue.get()
         # close queue
         queue.close()
