@@ -49,8 +49,9 @@ Radiative transfer codes for the Martian atmosphere and a sub-mm frequency regio
     ```
 
 ## Installation
-    download [the latest ver.](https://github.com/kazu41/RT4Mars/archive/master.zip)
-    or
+download
+[the latest ver.](https://github.com/kazu41/RT4Mars/archive/master.zip)
+or
     $ git clone https://github.com/kazu41/RT4Mars
 
 ## Author
